@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { cotizaciones } from "../assets/data";
+import { useState, useEffect } from "react";
+import { listarCotizaciones } from "../api/services";
 
 const formatoMoneda = (valor) =>
   Number(valor).toLocaleString("es-CO", {
@@ -13,6 +13,17 @@ const handleSubmit = (e) => {
 };
 
 export default function List() {
+  const [cotizaciones, setCotizaciones] = useState([]);
+
+  const cargar = async () => {
+    const resp = await listarCotizaciones();
+    setCotizaciones(resp.results);
+  };
+
+  useEffect(() => {
+    cargar();
+  }, []);
+
   const [peso, setPeso] = useState("");
   const [tipoCliente, setTipoCliente] = useState("");
   const [tipoServicio, setTipoServicio] = useState("");

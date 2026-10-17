@@ -17,6 +17,7 @@ export default function List() {
   const [tipoCliente, setTipoCliente] = useState("");
   const [tipoServicio, setTipoServicio] = useState("");
   const [id, setId] = useState("");
+  const [fechaCreacion, setFechaCreacion] = useState("");
 
   return (
     <div className="w-full max-w-6xl mx-auto my-6 px-4 flex flex-col lg:flex-row gap-6 items-start">
@@ -108,6 +109,23 @@ export default function List() {
             </select>
           </div>
 
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="creado_en"
+              className="text-sm font-medium text-gray-700"
+            >
+              Fecha de creación
+            </label>
+            <input
+              id="creado_en"
+              name="creado_en"
+              type="date"
+              value={fechaCreacion}
+              onChange={(e) => setFechaCreacion(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 w-full bg-white"
+            />
+          </div>
+
           <div className="flex flex-col gap-2 pt-2">
             <button
               type="submit"
@@ -138,6 +156,7 @@ export default function List() {
                 <th className="py-3 px-3">Tipo de cliente</th>
                 <th className="py-3 px-3">Tipo de envío</th>
                 <th className="py-3 px-3">Total</th>
+                <th className="py-3 px-3">Fecha de creación</th>
                 <th className="py-3 px-3 text-center">Detalle</th>
                 <th className="py-3 px-3 text-center">Eliminar</th>
               </tr>
@@ -156,6 +175,13 @@ export default function List() {
                   <td className="py-3 px-3 tabular-nums font-bold text-indigo-600">
                     {formatoMoneda(c.total)}
                   </td>
+
+                  <td className="py-3 px-3 text-gray-600">
+                    {c.creado_en
+                      ? c.creado_en.slice(0, 10).split("-").reverse().join("/")
+                      : "—"}
+                  </td>
+
                   <td className="py-3 px-3 text-center">
                     <button
                       type="button"

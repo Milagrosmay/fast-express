@@ -1,46 +1,115 @@
 import { useState } from "react";
+import { calcularCotizacion, guardarCotizacion } from "../api/services";
 
 export default function Form() {
   const [peso, setPeso] = useState("");
   const [tipoCliente, setTipoCliente] = useState("");
   const [tipoServicio, setTipoServicio] = useState("");
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log(peso, tipoCliente, tipoServicio);
+  const [resultado, setResultado] = useState(null);
+  const [cargando, setCargando] = useState(false);
+  const [errorGeneral, setErrorGeneral] = useState(null);
+  const [erroresCampos, setErroresCampos] = useState({});
+  const [mensaje, setMensaje] = useState(null);
+
+  const construirDatos = () => ({
+    peso_kg: peso,
+    tipo_cliente: tipoCliente,
+    tipo_envio: tipoServicio,
+  });
+
+  const limpiarMensajes = () => {
+    setErrorGeneral(null);
+    setErroresCampos({});
+    setMensaje(null);
   };
+
+  const manejarErrorBackend = (err, mensajeFallback) => {
+    setResultado(null);
+
+    // 1. Si 'detalle' es un objeto (ej: DATOS_INVALIDOS => { peso_kg: ["..."] })
+    if (typeof err?.detalle === "object" && err?.detalle !== null) {
+      setErroresCampos(err.detalle);
+    }
+    // 2. Si 'detalle' es texto (ej: PESO_INVALIDO, LIMITE_EXCEDIDO, NOT_FOUND)
+    else if (typeof err?.detalle === "string") {
+      setErrorGeneral(err.detalle);
+    }
+    // 3. Fallback en caso de error insospechado
+    else {
+      setErrorGeneral(mensajeFallback);
+    }
+  };
+
+  // Calcular (vista previa, no guarda en BD)
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    limpiarMensajes();
+    setCargando(true);
+    try {
+      const data = await calcularCotizacion(construirDatos());
+      setResultado(data);
+    } catch (err) {
+      manejarErrorBackend(err, "No se pudo calcular la cotización");
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  // Guardar cotización en BD
+  const handleGuardar = async () => {
+    limpiarMensajes();
+    setCargando(true);
+    try {
+      const data = await guardarCotizacion(construirDatos());
+      setResultado(data);
+      setMensaje(`Cotización #${data.id} guardada correctamente`);
+    } catch (err) {
+      manejarErrorBackend(err, "No se pudo guardar la cotización");
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const formularioCompleto = peso !== "" && tipoCliente && tipoServicio;
 
   return (
     <div className="flex flex-col items-center gap-6 min-h-screen px-4 py-6">
-      <form
-        className="bg-white w-full max-w-3xl p-6 rounded-md shadow-md space-y-4 "
+      <form 
+        noValidate
+        className="bg-white w-full max-w-3xl p-6 rounded-md shadow-md space-y-4"
         onSubmit={handleSubmit}
       >
         <h1 className="text-2xl font-bold text-center">Calcular cotización</h1>
 
         <div className="flex gap-3 flex-col md:flex-row">
+          {/* Campo Peso */}
           <div className="flex flex-col gap-1 flex-1">
             <label htmlFor="peso_kg" className="font-medium">
               Peso (kg)
             </label>
-
             <input
               id="peso_kg"
               name="peso_kg"
               type="number"
               step="0.01"
+              min="0.01"
+              max="20"
               placeholder="Ingrese el peso"
               onChange={(e) => setPeso(e.target.value)}
               value={peso}
-              max={20}
-              min={0}
-              className="border rounded px-3 py-2 w-full"
+              required
+              className={`border rounded px-3 py-2 w-full ${
+                erroresCampos.peso_kg ? "border-red-500" : "border-gray-300"
+              }`}
             />
             <small className="text-gray-500">
-              Máximo 20 kg, hasta 2 decimales
+              Mínimo 0.01 kg, máximo 20 kg (hasta 2 decimales)
             </small>
+            <ErrorCampo error={erroresCampos.peso_kg} />
           </div>
 
+          {/* Campo Tipo de Cliente */}
           <div className="flex flex-col gap-1 flex-1">
             <label htmlFor="tipo_cliente" className="font-medium">
               Tipo de Cliente:
@@ -50,15 +119,20 @@ export default function Form() {
               name="tipo_cliente"
               value={tipoCliente}
               onChange={(e) => setTipoCliente(e.target.value)}
-              className="border rounded px-3 py-2 w-full"
+              required
+              className={`border rounded px-3 py-2 w-full ${
+                erroresCampos.tipo_cliente ? "border-red-500" : "border-gray-300"
+              }`}
             >
               <option value="">Seleccione una opción</option>
               <option value="NUEVO">Nuevo</option>
               <option value="FRECUENTE">Frecuente</option>
               <option value="VIP">VIP</option>
             </select>
+            <ErrorCampo error={erroresCampos.tipo_cliente} />
           </div>
 
+          {/* Campo Tipo de Servicio (tipo_envio) */}
           <div className="flex flex-col gap-1 flex-1">
             <label htmlFor="tipo_servicio" className="font-medium">
               Tipo de Servicio:
@@ -68,54 +142,70 @@ export default function Form() {
               name="tipo_servicio"
               value={tipoServicio}
               onChange={(e) => setTipoServicio(e.target.value)}
-              className="border rounded px-3 py-2 w-full"
+              required
+              className={`border rounded px-3 py-2 w-full ${
+                erroresCampos.tipo_envio || erroresCampos.tipo_servicio
+                  ? "border-red-500"
+                  : "border-gray-300"
+              }`}
             >
               <option value="">Seleccione una opción</option>
               <option value="ESTANDAR">Estándar</option>
               <option value="EXPRESS">Express</option>
             </select>
+            <ErrorCampo error={erroresCampos.tipo_envio || erroresCampos.tipo_servicio} />
           </div>
         </div>
 
-        <div className="flex gap-3 flex-col md:flex-row">
+        {/* Error general (cuando detalle llega como string) */}
+        {errorGeneral && (
+          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2 font-medium">
+            {errorGeneral}
+          </p>
+        )}
+
+        {/* Mensaje de éxito */}
+        {mensaje && (
+          <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2 font-medium">
+            {mensaje}
+          </p>
+        )}
+
+        {/* Acciones */}
+        <div className="flex gap-3 flex-col md:flex-row pt-2">
           <button
             type="submit"
-            className="flex-1 bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
+            disabled={cargando}
+            className="flex-1 bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
           >
-            Calcular
+            {cargando ? "Procesando..." : "Calcular"}
           </button>
           <button
             type="button"
-            className="flex-1 border border-blue-600 text-blue-600 rounded px-4 py-2 hover:bg-blue-50"
+            onClick={handleGuardar}
+            disabled={cargando || !formularioCompleto}
+            className="flex-1 border border-blue-600 text-blue-600 rounded px-4 py-2 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
           >
             Guardar Cotización
           </button>
         </div>
       </form>
 
-      <Preview
-        result={{
-          costo_base: "5.00",
-          tarifa_por_kg: "4.00",
-          costo_peso: "40.00",
-          subtotal: "45.00",
-          porcentaje_descuento: "0.10",
-          descuento: "4.50",
-          porcentaje_recargo: "0.25",
-          recargo: "11.25",
-          total: "51.75",
-        }}
-      />
+      {/* Componente de Resumen */}
+      <Preview result={resultado} />
     </div>
   );
 }
 
-const formatoMoneda = (valor) =>
-  Number(valor).toLocaleString("es-CO", {
-    style: "currency",
-    currency: "USD", // cámbialo a "COP" si corresponde
-  });
+// Subcomponente auxiliar para renderizar mensajes de error por campo
+function ErrorCampo({ error }) {
+  if (!error) return null;
+  const mensajeText = Array.isArray(error) ? error.join(", ") : error;
+  return <span className="text-xs text-red-600 font-medium">{mensajeText}</span>;
+}
 
+// Formateadores según especificaciones (uso de Number(valor).toFixed(2))
+const formatoMoneda = (valor) => `$${Number(valor).toFixed(2)}`;
 const formatoPorcentaje = (valor) => `${(Number(valor) * 100).toFixed(0)}%`;
 
 function Fila({ label, detalle, valor, className = "" }) {

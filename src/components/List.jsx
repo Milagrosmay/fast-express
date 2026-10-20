@@ -9,15 +9,17 @@ import {
 const formatoMoneda = (valor) => `$${Number(valor).toFixed(2)}`;
 const formatoPorcentaje = (valor) => `${(Number(valor) * 100).toFixed(0)}%`;
 
-export default function List({ setVista }) {
+export default function List({
+  setVista,
+  cotizacionDetalle,
+  setCotizacionDetalle,
+}) {
   // Estados para datos
   const [cotizaciones, setCotizaciones] = useState([]);
   const [totalItems, setTotalItems] = useState(0);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
 
-  // Estado para el modal de detalle
-  const [cotizacionDetalle, setCotizacionDetalle] = useState(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
 
   // Estados de los Filtros
@@ -356,7 +358,7 @@ export default function List({ setVista }) {
         <ModalDetalle
           item={cotizacionDetalle}
           onClose={() => setCotizacionDetalle(null)}
-          onEdit={() => set(null)}
+          onEdit={() => setVista(2)}
         />
       )}
     </div>
@@ -364,7 +366,7 @@ export default function List({ setVista }) {
 }
 
 // Subcomponente Modal para el detalle completo de la cotización
-function ModalDetalle({ item, onClose }) {
+function ModalDetalle({ item, onClose, onEdit }) {
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div className="bg-white w-full max-w-lg rounded-lg shadow-xl p-6 space-y-4">
@@ -447,7 +449,7 @@ function ModalDetalle({ item, onClose }) {
 
         <div className="flex justify-around pt-2">
           <button
-            onClick={onClose}
+            onClick={onEdit}
             className="bg-blue-500 text-white px-4 cursor-pointer py-2 rounded hover:bg-blue-700 transition-colors font-medium"
           >
             Editar

@@ -1,7 +1,16 @@
-import { useState } from "react";
-import { calcularCotizacion, guardarCotizacion } from "../api/services";
+import { useEffect, useState } from "react";
+import {
+  calcularCotizacion,
+  editarCotizacion,
+  guardarCotizacion,
+} from "../api/services";
 
-export default function Form() {
+export default function Form({
+  setVista,
+  cotizacionDetalle,
+  setCotizacionDetalle,
+}) {
+  const [cotizacionId, setCotizacionId] = useState("");
   const [peso, setPeso] = useState("");
   const [tipoCliente, setTipoCliente] = useState("");
   const [tipoServicio, setTipoServicio] = useState("");
@@ -11,6 +20,20 @@ export default function Form() {
   const [errorGeneral, setErrorGeneral] = useState(null);
   const [erroresCampos, setErroresCampos] = useState({});
   const [mensaje, setMensaje] = useState(null);
+
+  useEffect(() => {
+    if (cotizacionDetalle) {
+      setPeso(cotizacionDetalle?.peso_kg);
+      setTipoCliente(cotizacionDetalle?.tipo_cliente);
+      setTipoServicio(cotizacionDetalle?.tipo_envio);
+      setCotizacionId(cotizacionDetalle?.id);
+    } else {
+      setPeso("");
+      setTipoCliente("");
+      setTipoServicio("");
+      setCotizacionId("");
+    }
+  }, [cotizacionDetalle]);
 
   const construirDatos = () => ({
     peso_kg: peso,
@@ -61,7 +84,12 @@ export default function Form() {
     limpiarMensajes();
     setCargando(true);
     try {
-      const data = await guardarCotizacion(construirDatos());
+      let data = {};
+      if (cotizacionId) {
+        data = await editarCotizacion(cotizacionId, construirDatos());
+      } else {
+        data = await guardarCotizacion(construirDatos());
+      }
       setResultado(data);
       setMensaje(`Cotización #${data.id} guardada correctamente`);
     } catch (err) {
@@ -75,12 +103,16 @@ export default function Form() {
 
   return (
     <div className="flex flex-col items-center gap-6 min-h-screen px-4 py-6">
-      <form 
+      <form
         noValidate
         className="bg-white w-full max-w-3xl p-6 rounded-md shadow-md space-y-4"
         onSubmit={handleSubmit}
       >
-        <h1 className="text-2xl font-bold text-center">Calcular cotización</h1>
+        <h1 className="text-2xl font-bold text-center">
+          {cotizacionId
+            ? "Editar cotización #" + cotizacionId
+            : "Calcular cotización"}
+        </h1>
 
         <div className="flex gap-3 flex-col md:flex-row">
           {/* Campo Peso */}
@@ -121,7 +153,9 @@ export default function Form() {
               onChange={(e) => setTipoCliente(e.target.value)}
               required
               className={`border rounded px-3 py-2 w-full ${
-                erroresCampos.tipo_cliente ? "border-red-500" : "border-gray-300"
+                erroresCampos.tipo_cliente
+                  ? "border-red-500"
+                  : "border-gray-300"
               }`}
             >
               <option value="">Seleccione una opción</option>
@@ -153,7 +187,9 @@ export default function Form() {
               <option value="ESTANDAR">Estándar</option>
               <option value="EXPRESS">Express</option>
             </select>
-            <ErrorCampo error={erroresCampos.tipo_envio || erroresCampos.tipo_servicio} />
+            <ErrorCampo
+              error={erroresCampos.tipo_envio || erroresCampos.tipo_servicio}
+            />
           </div>
         </div>
 
@@ -186,7 +222,7 @@ export default function Form() {
             disabled={cargando || !formularioCompleto}
             className="flex-1 border border-blue-600 text-blue-600 rounded px-4 py-2 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
           >
-            Guardar Cotización
+            {cotizacionId ? "Editar" : "Guardar"} Cotización
           </button>
         </div>
       </form>
@@ -201,7 +237,9 @@ export default function Form() {
 function ErrorCampo({ error }) {
   if (!error) return null;
   const mensajeText = Array.isArray(error) ? error.join(", ") : error;
-  return <span className="text-xs text-red-600 font-medium">{mensajeText}</span>;
+  return (
+    <span className="text-xs text-red-600 font-medium">{mensajeText}</span>
+  );
 }
 
 // Formateadores según especificaciones (uso de Number(valor).toFixed(2))

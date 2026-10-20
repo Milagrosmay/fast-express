@@ -1,4 +1,4 @@
-export default function Header({ setVista }) {
+export default function Header({ setVista, setCotizacionDetalle }) {
   const base =
     "cursor-pointer rounded-md px-4 py-2 text-lg text-black transition hover:bg-slate-800 hover:text-white hover:shadow-lg focus:bg-slate-800 focus:text-white focus:shadow-lg";
 
@@ -18,10 +18,22 @@ export default function Header({ setVista }) {
       </div>
 
       <div className="flex items-center gap-4">
-        <button className={base} onClick={() => setVista(1)}>
+        <button
+          className={base}
+          onClick={() => {
+            setCotizacionDetalle(null);
+            setVista(1);
+          }}
+        >
           Cotizaciones
         </button>
-        <button className={base} onClick={() => setVista(2)}>
+        <button
+          className={base}
+          onClick={() => {
+            setCotizacionDetalle(null);
+            setVista(2);
+          }}
+        >
           Formulario
         </button>
       </div>
